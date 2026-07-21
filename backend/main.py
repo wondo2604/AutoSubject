@@ -173,3 +173,17 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    import sys
+    from pathlib import Path
+    
+    # 루트 디렉토리 보정
+    root_dir = Path(__file__).resolve().parent.parent
+    os.chdir(root_dir)
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+        
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
