@@ -29,6 +29,15 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+def set_api_keys(openai_key: str = None, gemini_key: str = None):
+    global OPENAI_API_KEY, GEMINI_API_KEY
+    if openai_key is not None:
+        OPENAI_API_KEY = openai_key
+        os.environ["OPENAI_API_KEY"] = openai_key
+    if gemini_key is not None:
+        GEMINI_API_KEY = gemini_key
+        os.environ["GEMINI_API_KEY"] = gemini_key
+
 # Git Config
 GIT_USER_NAME = os.getenv("GIT_USER_NAME", "wondo")
 GIT_USER_EMAIL = os.getenv("GIT_USER_EMAIL", "wondo1@outlook.kr")

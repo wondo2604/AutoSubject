@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -6,6 +6,7 @@ import json
 import asyncio
 
 try:
+    from backend.config import set_api_keys, OPENAI_API_KEY, GEMINI_API_KEY
     from backend.research_service import research_crawler
     from backend.ai_service import ai_service
     from backend.export_service import export_service
@@ -13,6 +14,7 @@ try:
     from backend.git_service import git_service
     from backend.db import get_db
 except ImportError:
+    from config import set_api_keys, OPENAI_API_KEY, GEMINI_API_KEY
     from research_service import research_crawler
     from ai_service import ai_service
     from export_service import export_service
@@ -51,48 +53,82 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+class ApiKeysRequest(BaseModel):
+    openai_api_key: Optional[str] = ""
+    gemini_api_key: Optional[str] = ""
+
 class ResearchRequest(BaseModel):
     major_topic: str
     sub_topic: str
 
-class GenerateRequest(BaseModel):
+class TopicItem(BaseModel):
     major_topic: str
     sub_topic: str
-    selected_subtypes: List[str]
+    subtypes: List[str] = []
+
+class GenerateRequest(BaseModel):
+    school_level: str = "중학교"
+    grade: str = "2학년"
+    semester: str = "1학기"
+    topic_list: List[TopicItem]
     model_name: str = "GPT-4o"
     temperature: float = 0.7
     custom_prompt: Optional[str] = ""
-    count: int = 5
+    count_per_topic: int = 3
     run_rpa: bool = False
 
 @app.get("/")
 def read_root():
-    return {"status": "ok", "message": "AutoSubjectr Backend API is running."}
+    return {
+        "status": "ok", 
+        "message": "AutoSubjectr Backend API is running flawlessly.",
+        "openai_key_configured": bool(OPENAI_API_KEY),
+        "gemini_key_configured": bool(GEMINI_API_KEY)
+    }
+
+@app.post("/api/config/keys")
+def update_api_keys(req: ApiKeysRequest):
+    set_api_keys(req.openai_api_key, req.gemini_api_key)
+    return {
+        "status": "success", 
+        "message": "AI API Key가 성공적으로 업데이트되었습니다."
+    }
 
 @app.post("/api/research")
 def research_subtypes(req: ResearchRequest):
-    subtypes = research_crawler.search_subtypes(req.major_topic, req.sub_topic)
-    return {"subtypes": subtypes}
+    try:
+        subtypes = research_crawler.search_subtypes(req.major_topic, req.sub_topic)
+        return {"subtypes": subtypes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/generate")
 async def generate_workbook(req: GenerateRequest, background_tasks: BackgroundTasks):
-    await manager.broadcast({"type": "log", "message": f"🤖 AI 문항 생성 시작... (단원: {req.major_topic} > {req.sub_topic})"})
+    if not req.topic_list:
+        raise HTTPException(status_code=400, detail="최소 하나 이상의 단원을 추가해야 합니다.")
+
+    await manager.broadcast({
+        "type": "log", 
+        "message": f"📚 [{req.school_level} {req.grade} {req.semester}] 총 {len(req.topic_list)}개 단원 문제집 일괄 생성 시작..."
+    })
     
-    # 1. 문항 및 렌더링 이미지 생성
-    questions = ai_service.generate_questions(
-        req.major_topic,
-        req.sub_topic,
-        req.selected_subtypes,
-        req.count,
+    # 1. 다중 단원 문항 및 렌더링 이미지 생성
+    raw_topic_list = [t.dict() for t in req.topic_list]
+    questions = ai_service.generate_questions_for_topics(
+        req.school_level,
+        req.grade,
+        req.semester,
+        raw_topic_list,
+        req.count_per_topic,
         req.custom_prompt
     )
     
     # 2. Raw Data 저장 (CSV / XLSX)
-    file_prefix = f"prob_{req.sub_topic}"
+    file_prefix = f"Workbook_{req.school_level}_{req.grade}_{req.semester}"
     paths = export_service.export_questions(questions, file_prefix)
     await manager.broadcast({
         "type": "log", 
-        "message": f"📊 데이터 저장 완료!\n- CSV: {paths['csv_path']}\n- XLSX: {paths['xlsx_path']}"
+        "message": f"📊 전체 문제집 Raw Data 저장 완료!\n- CSV: {paths['csv_path']}\n- XLSX: {paths['xlsx_path']}"
     })
     
     # 3. RPA 자동화 비동기 실행 (선택 시)
@@ -107,21 +143,27 @@ async def generate_workbook(req: GenerateRequest, background_tasks: BackgroundTa
     }
 
 async def run_rpa_task(questions: list):
-    await manager.broadcast({"type": "log", "message": "🖥️ 한글(HWP) 로컬 워드프로세서 포그라운드 활성화 중..."})
+    await manager.broadcast({"type": "log", "message": "🖥️ 한글(HWP) 포그라운드 모드 활성화 중..."})
     hwp_rpa_engine.bring_hwp_to_front()
     
+    current_section = ""
     for idx, q in enumerate(questions, 1):
-        await manager.broadcast({"type": "log", "message": f"✍️ [문제 {idx}/{len(questions)}] 한글 문서에 타이핑 & 이미지 삽입 중..."})
+        # 단원이 변경될 때 단원 제목 타이핑
+        if q["Section"] != current_section:
+            current_section = q["Section"]
+            await manager.broadcast({"type": "log", "message": f"📖 단원 헤더 입력: {current_section}"})
+        
+        await manager.broadcast({"type": "log", "message": f"✍️ [문제 {idx}/{len(questions)}] 한글 본문 타이핑 & 이미지 삽입..."})
         choices_list = [c.strip() for c in q["Choices"].split(",")]
         img_path = f"C:\\Users\\WDAGUtilityAccount\\Desktop\\test\\Workbook_Output\\Images\\{q['Image_File']}"
         
         success = hwp_rpa_engine.type_question_into_hwp(idx, q["Question"], choices_list, img_path)
         if not success:
-            await manager.broadcast({"type": "log", "message": "⚠️ 킬스위치 작동으로 인해 한글 RPA 작업이 중단되었습니다."})
+            await manager.broadcast({"type": "log", "message": "⚠️ 킬스위치(Ctrl+Shift+F12) 작동으로 RPA가 안전하게 중단되었습니다."})
             break
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.4)
         
-    await manager.broadcast({"type": "log", "message": "✅ 한글(HWP) 입력 작업이 완료되었습니다!"})
+    await manager.broadcast({"type": "log", "message": "🎉 전체 문제집 한글(HWP) 실물 입력이 완료되었습니다!"})
 
 @app.websocket("/ws/monitor")
 async def websocket_endpoint(websocket: WebSocket):
