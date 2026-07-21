@@ -143,6 +143,11 @@ async def generate_workbook(req: GenerateRequest, background_tasks: BackgroundTa
     }
 
 async def run_rpa_task(questions: list):
+    try:
+        from backend.config import IMAGES_DIR
+    except ImportError:
+        from config import IMAGES_DIR
+
     await manager.broadcast({"type": "log", "message": "🖥️ 한글(HWP) 포그라운드 모드 활성화 중..."})
     hwp_rpa_engine.bring_hwp_to_front()
     
@@ -155,7 +160,7 @@ async def run_rpa_task(questions: list):
         
         await manager.broadcast({"type": "log", "message": f"✍️ [문제 {idx}/{len(questions)}] 한글 본문 타이핑 & 이미지 삽입..."})
         choices_list = [c.strip() for c in q["Choices"].split(",")]
-        img_path = f"C:\\Users\\WDAGUtilityAccount\\Desktop\\test\\Workbook_Output\\Images\\{q['Image_File']}"
+        img_path = str(IMAGES_DIR / q['Image_File'])
         
         success = hwp_rpa_engine.type_question_into_hwp(idx, q["Question"], choices_list, img_path)
         if not success:
