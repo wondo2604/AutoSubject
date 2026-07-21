@@ -1,8 +1,13 @@
 import json
 import os
 import requests
-from backend.config import OPENAI_API_KEY, GEMINI_API_KEY
-from backend.renderer_service import renderer
+
+try:
+    from backend.config import OPENAI_API_KEY, GEMINI_API_KEY
+    from backend.renderer_service import renderer
+except ImportError:
+    from config import OPENAI_API_KEY, GEMINI_API_KEY
+    from renderer_service import renderer
 
 class AIService:
     @staticmethod

@@ -3,7 +3,11 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
-from backend.config import IMAGES_DIR
+
+try:
+    from backend.config import IMAGES_DIR
+except ImportError:
+    from config import IMAGES_DIR
 
 class MathRenderer:
     @staticmethod

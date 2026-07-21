@@ -1,7 +1,11 @@
 import sqlite3
 import json
 from pathlib import Path
-from backend.config import BASE_DIR
+
+try:
+    from backend.config import BASE_DIR
+except ImportError:
+    from config import BASE_DIR
 
 DB_PATH = BASE_DIR / "app_data.db"
 

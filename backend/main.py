@@ -5,12 +5,20 @@ from typing import List, Optional
 import json
 import asyncio
 
-from backend.research_service import research_crawler
-from backend.ai_service import ai_service
-from backend.export_service import export_service
-from backend.rpa_engine import hwp_rpa_engine
-from backend.git_service import git_service
-from backend.db import get_db
+try:
+    from backend.research_service import research_crawler
+    from backend.ai_service import ai_service
+    from backend.export_service import export_service
+    from backend.rpa_engine import hwp_rpa_engine
+    from backend.git_service import git_service
+    from backend.db import get_db
+except ImportError:
+    from research_service import research_crawler
+    from ai_service import ai_service
+    from export_service import export_service
+    from rpa_engine import hwp_rpa_engine
+    from git_service import git_service
+    from db import get_db
 
 app = FastAPI(title="AutoSubjectr - Workbook Auto Generator API")
 

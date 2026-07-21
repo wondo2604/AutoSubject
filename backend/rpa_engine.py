@@ -3,7 +3,11 @@ import pyperclip
 import pyautogui
 import os
 from pathlib import Path
-from backend.kill_switch import kill_switch_manager
+
+try:
+    from backend.kill_switch import kill_switch_manager
+except ImportError:
+    from kill_switch import kill_switch_manager
 
 class HwpRpaEngine:
     def __init__(self):

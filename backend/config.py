@@ -1,11 +1,20 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
+# sys.path 호환 처리
+CURRENT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = CURRENT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
 
 # .env 로드
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = PROJECT_ROOT
 
 # 출력 경로
 OUTPUT_BASE_DIR = Path(os.getenv("OUTPUT_BASE_DIR", r"C:\Users\WDAGUtilityAccount\Desktop\test\Workbook_Output"))

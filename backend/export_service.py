@@ -1,6 +1,10 @@
 import pandas as pd
 from pathlib import Path
-from backend.config import DATA_DIR
+
+try:
+    from backend.config import DATA_DIR
+except ImportError:
+    from config import DATA_DIR
 
 class ExportService:
     @staticmethod

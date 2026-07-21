@@ -1,7 +1,12 @@
 import subprocess
 import os
+import sys
 from pathlib import Path
-from backend.config import BASE_DIR, GIT_EXE, GIT_USER_NAME, GIT_USER_EMAIL, GIT_REMOTE_URL
+
+try:
+    from backend.config import BASE_DIR, GIT_EXE, GIT_USER_NAME, GIT_USER_EMAIL, GIT_REMOTE_URL
+except ImportError:
+    from config import BASE_DIR, GIT_EXE, GIT_USER_NAME, GIT_USER_EMAIL, GIT_REMOTE_URL
 
 class GitService:
     def __init__(self, repo_dir: Path = BASE_DIR):
