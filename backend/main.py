@@ -109,18 +109,28 @@ async def generate_workbook(req: GenerateRequest, background_tasks: BackgroundTa
 
     await manager.broadcast({
         "type": "log", 
-        "message": f"📚 [{req.school_level} {req.grade} {req.semester}] 총 {len(req.topic_list)}개 단원 문제집 일괄 생성 시작..."
+        "message": f"📚 [{req.school_level} {req.grade} {req.semester}] 총 {len(req.topic_list)}개 단원 문제집 생성 시작 (모델: {req.model_name})..."
     })
+
+    def log_cb(msg: str):
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast({"type": "log", "message": msg}))
+        except Exception:
+            pass
     
     # 1. 다중 단원 문항 및 렌더링 이미지 생성
     raw_topic_list = [t.dict() for t in req.topic_list]
     questions = ai_service.generate_questions_for_topics(
-        req.school_level,
-        req.grade,
-        req.semester,
-        raw_topic_list,
-        req.count_per_topic,
-        req.custom_prompt
+        school_level=req.school_level,
+        grade=req.grade,
+        semester=req.semester,
+        topic_list=raw_topic_list,
+        count_per_topic=req.count_per_topic,
+        custom_prompt=req.custom_prompt,
+        model_name=req.model_name,
+        temperature=req.temperature,
+        log_callback=log_cb
     )
     
     # 2. Raw Data 저장 (CSV / XLSX)

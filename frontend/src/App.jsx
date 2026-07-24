@@ -346,8 +346,10 @@ export default function App() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none"
                 >
                   <option value="GPT-4o">GPT-4o (OpenAI)</option>
+                  <option value="GPT-4o-mini">GPT-4o-mini (OpenAI)</option>
                   <option value="o3-mini">o3-mini (OpenAI)</option>
-                  <option value="Gemini-3.1-Pro">Gemini 3.1 Pro (Google)</option>
+                  <option value="Gemini 2.0 Flash">Gemini 2.0 Flash (Google)</option>
+                  <option value="Gemini 1.5 Pro">Gemini 1.5 Pro (Google)</option>
                 </select>
               </div>
               <div>
